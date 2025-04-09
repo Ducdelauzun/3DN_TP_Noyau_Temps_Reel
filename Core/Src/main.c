@@ -50,6 +50,9 @@
 /* USER CODE BEGIN PV */
 SemaphoreHandle_t xSemaphore;
 uint32_t delay_ms = 100;
+extern TaskHandle_t xTaskTakeHandle;
+TaskHandle_t xTaskTakeHandle = NULL;
+QueueHandle_t xQueue;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,6 +74,8 @@ void LedTask(void *pvParameters)
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
 }
+
+/*
 void taskGive(void *pvParameters)
 {
 	for (;;)
@@ -99,6 +104,81 @@ void taskTake(void *pvParameters)
 		{
 			printf("taskTake: Timeout! Sémaphore non acquis.\r\n");
 			// Reset software STM32
+			NVIC_SystemReset();
+		}
+	}
+}*/
+/*
+void taskGive(void *pvParameters)
+{
+	for (;;)
+	{
+		printf("taskGive: avant xTaskNotifyGive()\r\n");
+		xTaskNotifyGive(xTaskTakeHandle);
+		printf("taskGive: après xTaskNotifyGive()\r\n");
+
+		vTaskDelay(pdMS_TO_TICKS(delay_ms));
+		delay_ms += 100;
+	}
+}
+
+void taskTake(void *pvParameters)
+{
+	xTaskTakeHandle = xTaskGetCurrentTaskHandle();
+
+	for (;;)
+	{
+		printf("taskTake: en attente de notification...\r\n");
+
+		uint32_t notif = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
+
+		if (notif > 0)
+		{
+			printf("taskTake: notification reçue !\r\n");
+		}
+		else
+		{
+			printf("taskTake: Timeout! Aucune notification reçue.\r\n");
+			NVIC_SystemReset();
+		}
+	}
+}
+*/
+
+void taskGive(void *pvParameters)
+{
+	TickType_t timerValue;
+
+	for (;;)
+	{
+		timerValue = HAL_GetTick();
+		printf("taskGive: envoi de %lu dans la queue\r\n", timerValue);
+
+		if (xQueueSend(xQueue, &timerValue, portMAX_DELAY) != pdPASS)
+		{
+			printf("taskGive: ERREUR d'envoi dans la queue !\r\n");
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(delay_ms));
+		delay_ms += 100;
+	}
+}
+
+void taskTake(void *pvParameters)
+{
+	TickType_t receivedValue;
+
+	for (;;)
+	{
+		printf("taskTake: attente d'une valeur dans la queue...\r\n");
+
+		if (xQueueReceive(xQueue, &receivedValue, pdMS_TO_TICKS(1000)) == pdTRUE)
+		{
+			printf("taskTake: reçu %lu depuis la queue !\r\n", receivedValue);
+		}
+		else
+		{
+			printf("taskTake: Timeout! Aucune donnée reçue.\r\n");
 			NVIC_SystemReset();
 		}
 	}
@@ -142,13 +222,27 @@ int main(void)
 	MX_USART1_UART_Init();
 	/* USER CODE BEGIN 2 */
 	//xTaskCreate(LedTask, "LED Task", 128, NULL, 1, NULL);
+	/*
 	// Création du sémaphore binaire
 	xSemaphore = xSemaphoreCreateBinary();
 	if (xSemaphore == NULL) {
 		Error_Handler(); // Erreur d'initialisation
 	}
 
-	// Création des tâches avec priorités différentes
+
+	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
+	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);
+	*/
+
+	/*
+	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
+	xTaskCreate(taskTake, "Take", 128, NULL, 2, &xTaskTakeHandle); */
+
+	xQueue = xQueueCreate(5, sizeof(TickType_t));
+	if (xQueue == NULL) {
+		Error_Handler(); // Erreur de création
+	}
+
 	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
 	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);
 	/* USER CODE END 2 */
