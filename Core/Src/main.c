@@ -149,8 +149,8 @@ int main(void)
 	}
 
 	// Création des tâches avec priorités différentes
-	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);  // Priorité haute
-	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);  // Priorité basse
+	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
+	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);
 	/* USER CODE END 2 */
 
 	/* Call init function for freertos objects (in cmsis_os2.c) */
