@@ -28,6 +28,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "drv_uart1.h"
+#include "shell.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,7 +39,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define STACK_SIZE 256
+#define TASK1_PRIORITY 1
+#define TASK2_PRIORITY 2
+#define TASK1_DELAY 1
+#define TASK2_DELAY 2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,6 +59,17 @@ uint32_t delay_ms = 100;
 extern TaskHandle_t xTaskTakeHandle;
 TaskHandle_t xTaskTakeHandle = NULL;
 QueueHandle_t xQueue;
+
+BaseType_t ret;
+SemaphoreHandle_t mutexPrintf;
+static h_shell_t mon_shell;
+
+TaskHandle_t ledTaskHandle = NULL;
+volatile uint32_t led_period_ms = 0;
+
+volatile uint32_t spam_count = 0;
+char spam_msg[BUFFER_SIZE] = "spam";
+TaskHandle_t spamTaskHandle = NULL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,9 +86,16 @@ void LedTask(void *pvParameters)
 {
 	while (1)
 	{
-		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		printf("LED toggled\r\n");
-		vTaskDelay(100 / portTICK_PERIOD_MS);
+		if (led_period_ms == 0)
+		{
+			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+			vTaskSuspend(NULL);
+		}
+		else
+		{
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			vTaskDelay(pdMS_TO_TICKS(led_period_ms / 2));
+		}
 	}
 }
 
@@ -143,8 +167,8 @@ void taskTake(void *pvParameters)
 		}
 	}
 }
-*/
-
+ */
+/*
 void taskGive(void *pvParameters)
 {
 	TickType_t timerValue;
@@ -182,6 +206,98 @@ void taskTake(void *pvParameters)
 			NVIC_SystemReset();
 		}
 	}
+}*/
+/*
+void task_bug(void * pvParameters)
+{
+	int delay = (int) pvParameters;
+	for(;;)
+	{
+		xSemaphoreTake(mutexPrintf, portMAX_DELAY);
+		printf("Je suis %s et je m'endors pour \%d ticks\r\n", pcTaskGetName(NULL), delay);
+		xSemaphoreGive(mutexPrintf);
+		vTaskDelay(delay);
+	}
+}*/
+
+int ma_fonction_test(h_shell_t * h_shell, int argc, char ** argv)
+{
+	int size;
+	size = snprintf(h_shell->print_buffer, BUFFER_SIZE, "Fonction test appelee avec %d argument(s)\r\n", argc);
+	h_shell->drv.transmit(h_shell->print_buffer, size);
+
+	for(int i = 0; i < argc; i++) {
+		size = snprintf(h_shell->print_buffer, BUFFER_SIZE, "argv[%d] = %s\r\n", i, argv[i]);
+		h_shell->drv.transmit(h_shell->print_buffer, size);
+	}
+
+	return 0;
+}
+
+void shellTask(void * pvParameters)
+{
+	shell_run(&mon_shell);
+}
+
+int led_shell_func(h_shell_t * h_shell, int argc, char ** argv)
+{
+	if (argc < 2)
+	{
+		int len = snprintf(h_shell->print_buffer, BUFFER_SIZE, "Usage: l <periode_ms>\r\n");
+		h_shell->drv.transmit(h_shell->print_buffer, len);
+		return -1;
+	}
+
+	led_period_ms = atoi(argv[1]);
+
+	if (led_period_ms > 0)
+	{
+		if (eTaskGetState(ledTaskHandle) == eSuspended)
+		{
+			vTaskResume(ledTaskHandle);
+		}
+	}
+
+	int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
+	                   "Clignotement LED %s (periode = %lu ms)\r\n",
+	                   led_period_ms == 0 ? "désactivé" : "activé", led_period_ms);
+	h_shell->drv.transmit(h_shell->print_buffer, len);
+
+	return 0;
+}
+
+void spamTask(void *pvParameters)
+{
+	while (1)
+	{
+		if (spam_count > 0)
+		{
+			printf("%s\r\n", spam_msg);
+			spam_count--;
+		}
+		vTaskDelay(pdMS_TO_TICKS(200));
+	}
+}
+
+int spam_shell_func(h_shell_t * h_shell, int argc, char ** argv)
+{
+	if (argc < 3)
+	{
+		int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
+		                   "Usage: s <message> <nombre>\r\n");
+		h_shell->drv.transmit(h_shell->print_buffer, len);
+		return -1;
+	}
+
+	strncpy(spam_msg, argv[1], BUFFER_SIZE - 1);
+	spam_msg[BUFFER_SIZE - 1] = '\0';
+	spam_count = atoi(argv[2]);
+
+	int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
+	                   "Spam lancé : %s x %lu\r\n", spam_msg, spam_count);
+	h_shell->drv.transmit(h_shell->print_buffer, len);
+
+	return 0;
 }
 /* USER CODE END PFP */
 
@@ -232,19 +348,46 @@ int main(void)
 
 	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
 	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);
-	*/
+	 */
 
 	/*
 	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
 	xTaskCreate(taskTake, "Take", 128, NULL, 2, &xTaskTakeHandle); */
-
+	/*
 	xQueue = xQueueCreate(5, sizeof(TickType_t));
 	if (xQueue == NULL) {
 		Error_Handler(); // Erreur de création
 	}
 
 	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
-	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);
+	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);*/
+	/*
+	mutexPrintf = xSemaphoreCreateMutex();
+	if (mutexPrintf == NULL) {
+		Error_Handler();
+	}
+
+	ret = xTaskCreate(task_bug, "Tache 1", STACK_SIZE, \
+			(void *) TASK1_DELAY, TASK1_PRIORITY, NULL);
+	configASSERT(pdPASS == ret);
+	ret = xTaskCreate(task_bug, "Tache 2", STACK_SIZE, \
+			(void *) TASK2_DELAY, TASK2_PRIORITY, NULL);
+	configASSERT(pdPASS == ret);*/
+
+	mon_shell.drv.receive = drv_uart1_receive;
+	mon_shell.drv.transmit = drv_uart1_transmit;
+
+	shell_init(&mon_shell);
+	shell_add(&mon_shell, 't', ma_fonction_test, "Fonction test utilisateur");
+	xTaskCreate(shellTask, "Shell", 512, NULL, 1, NULL);
+
+	xTaskCreate(LedTask, "LED Task", 128, NULL, 1, &ledTaskHandle);
+	shell_add(&mon_shell, 'l', led_shell_func, "Contrôle de la LED");
+
+	xTaskCreate(spamTask, "Spam", 256, NULL, 1, &spamTaskHandle);
+	shell_add(&mon_shell, 's', spam_shell_func, "Affiche un message plusieurs fois");
+
+	vTaskStartScheduler();
 	/* USER CODE END 2 */
 
 	/* Call init function for freertos objects (in cmsis_os2.c) */

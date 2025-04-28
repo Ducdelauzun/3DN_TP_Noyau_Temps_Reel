@@ -4,6 +4,7 @@
 ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1072:13:prvAddNewTaskToReadyList	16	static,ignoring_inline_asm
 ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1157:7:vTaskDelete	24	static,ignoring_inline_asm
 ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1333:7:vTaskDelay	24	static,ignoring_inline_asm
+../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1378:13:eTaskGetState	40	static,ignoring_inline_asm
 ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1470:14:uxTaskPriorityGet	24	static
 ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1492:14:uxTaskPriorityGetFromISR	40	static,ignoring_inline_asm
 ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c:1532:7:vTaskPrioritySet	40	static,ignoring_inline_asm
