@@ -259,8 +259,8 @@ int led_shell_func(h_shell_t * h_shell, int argc, char ** argv)
 	}
 
 	int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
-	                   "Clignotement LED %s (periode = %lu ms)\r\n",
-	                   led_period_ms == 0 ? "désactivé" : "activé", led_period_ms);
+			"Clignotement LED %s (periode = %lu ms)\r\n",
+			led_period_ms == 0 ? "désactivé" : "activé", led_period_ms);
 	h_shell->drv.transmit(h_shell->print_buffer, len);
 
 	return 0;
@@ -284,7 +284,7 @@ int spam_shell_func(h_shell_t * h_shell, int argc, char ** argv)
 	if (argc < 3)
 	{
 		int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
-		                   "Usage: s <message> <nombre>\r\n");
+				"Usage: s <message> <nombre>\r\n");
 		h_shell->drv.transmit(h_shell->print_buffer, len);
 		return -1;
 	}
@@ -294,10 +294,47 @@ int spam_shell_func(h_shell_t * h_shell, int argc, char ** argv)
 	spam_count = atoi(argv[2]);
 
 	int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
-	                   "Spam lancé : %s x %lu\r\n", spam_msg, spam_count);
+			"Spam lancé : %s x %lu\r\n", spam_msg, spam_count);
 	h_shell->drv.transmit(h_shell->print_buffer, len);
 
 	return 0;
+}
+/*
+void dummyTask(void *pvParameters)
+{
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}*/
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    char msg[100];
+    int size = snprintf(msg, sizeof(msg), "\r\n[ERROR] Stack overflow detecté dans la tâche : %s\r\n", pcTaskName);
+    HAL_UART_Transmit(&huart1, (uint8_t *)msg, size, HAL_MAX_DELAY);
+
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+
+    __disable_irq();
+
+    while (1)
+    {
+        HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+        HAL_Delay(1000);
+    }
+}
+
+void recursive_overflow(void)
+{
+    char buffer[100];
+    (void)buffer;
+    recursive_overflow();
+}
+
+void dummyTask(void *pvParameters)
+{
+    recursive_overflow();
 }
 /* USER CODE END PFP */
 
@@ -307,60 +344,81 @@ int spam_shell_func(h_shell_t * h_shell, int argc, char ** argv)
 /* USER CODE END 0 */
 
 /**
- * @brief  The application entry point.
- * @retval int
- */
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
 
-	/* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
-	/* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-	/* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-	/* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-	/* USER CODE END Init */
+  /* USER CODE END Init */
 
-	/* Configure the system clock */
-	SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-	/* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-	/* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_USART1_UART_Init();
-	/* USER CODE BEGIN 2 */
-	//xTaskCreate(LedTask, "LED Task", 128, NULL, 1, NULL);
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  /* USER CODE BEGIN 2 */
+	/*if (xTaskCreate(LedTask, "LED Task", 128, NULL, 1, &ledTaskHandle) != pdPASS) {
+		printf("Erreur création tâche LED\r\n");
+		Error_Handler();
+	}*/
+
 	/*
 	// Création du sémaphore binaire
 	xSemaphore = xSemaphoreCreateBinary();
 	if (xSemaphore == NULL) {
-		Error_Handler(); // Erreur d'initialisation
+		Error_Handler();
 	}
 
-
-	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
-	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);
+	if (xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL) != pdPASS) {
+    	printf("Erreur création tâche Give\r\n");
+    	Error_Handler();
+	}
+	if (xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL) != pdPASS) {
+    	printf("Erreur création tâche Take\r\n");
+    	Error_Handler();
+	}
 	 */
 
 	/*
-	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
-	xTaskCreate(taskTake, "Take", 128, NULL, 2, &xTaskTakeHandle); */
+	if (xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL) != pdPASS) {
+    	printf("Erreur création tâche Give\r\n");
+    	Error_Handler();
+	}
+	if (xTaskCreate(taskTake, "Take", 128, NULL, 2, &xTaskTakeHandle) != pdPASS) {
+    	printf("Erreur création tâche Take\r\n");
+    	Error_Handler();
+	} */
 	/*
 	xQueue = xQueueCreate(5, sizeof(TickType_t));
 	if (xQueue == NULL) {
 		Error_Handler(); // Erreur de création
 	}
 
-	xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL);
-	xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL);*/
+	if (xTaskCreate(taskGive, "Give", 128, NULL, 1, NULL) != pdPASS) {
+    	printf("Erreur création tâche Give\r\n");
+    	Error_Handler();
+	}
+	if (xTaskCreate(taskTake, "Take", 128, NULL, 2, NULL) != pdPASS) {
+    	printf("Erreur création tâche Take\r\n");
+    	Error_Handler();
+	}*/
 	/*
 	mutexPrintf = xSemaphoreCreateMutex();
 	if (mutexPrintf == NULL) {
@@ -378,28 +436,57 @@ int main(void)
 	mon_shell.drv.transmit = drv_uart1_transmit;
 
 	shell_init(&mon_shell);
-	shell_add(&mon_shell, 't', ma_fonction_test, "Fonction test utilisateur");
-	xTaskCreate(shellTask, "Shell", 512, NULL, 1, NULL);
+	if (shell_add(&mon_shell, 't', ma_fonction_test, "Fonction test utilisateur") != 0) {
+	    printf("Erreur ajout commande shell t\r\n");
+	    Error_Handler();
+	}
+	if (xTaskCreate(shellTask, "Shell", 512, NULL, 1, NULL) != pdPASS) {
+	    	printf("Erreur création tâche Shell\r\n");
+	    	Error_Handler();
+		}
+	if (xTaskCreate(LedTask, "LED Task", 128, NULL, 1, &ledTaskHandle) != pdPASS) {
+	    	printf("Erreur création tâche LED Task\r\n");
+	    	Error_Handler();
+		}
+	if (shell_add(&mon_shell, 'l', led_shell_func, "Contrôle de la LED") != 0) {
+	    printf("Erreur ajout commande shell t\r\n");
+	    Error_Handler();
+	}
 
-	xTaskCreate(LedTask, "LED Task", 128, NULL, 1, &ledTaskHandle);
-	shell_add(&mon_shell, 'l', led_shell_func, "Contrôle de la LED");
+	if (xTaskCreate(spamTask, "Spam", 256, NULL, 1, &spamTaskHandle) != pdPASS) {
+	    	printf("Erreur création tâche Spam\r\n");
+	    	Error_Handler();
+		}
+	if (shell_add(&mon_shell, 's', spam_shell_func, "Affiche un message plusieurs fois") != 0) {
+	    printf("Erreur ajout commande shell t\r\n");
+	    Error_Handler();
+	}
+	/*
+	for (int i = 0; i < 100; i++) {
+	    if (xTaskCreate(dummyTask, "Dummy", 128, NULL, 1, NULL) != pdPASS) {
+	        printf("Erreur creation tache dummy %d\r\n", i);
+	        Error_Handler();
+	    }
+	}*/
 
-	xTaskCreate(spamTask, "Spam", 256, NULL, 1, &spamTaskHandle);
-	shell_add(&mon_shell, 's', spam_shell_func, "Affiche un message plusieurs fois");
+	if (xTaskCreate(dummyTask, "Dummy", 64, NULL, 1, NULL) != pdPASS) {
+	    printf("Erreur création tâche Dummy\r\n");
+	    Error_Handler();
+	}
 
 	vTaskStartScheduler();
-	/* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-	/* Call init function for freertos objects (in cmsis_os2.c) */
-	MX_FREERTOS_Init();
+  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
 
-	/* Start scheduler */
-	osKernelStart();
+  /* Start scheduler */
+  osKernelStart();
 
-	/* We should never get here as control is now taken by the scheduler */
+  /* We should never get here as control is now taken by the scheduler */
 
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 	while (1)
 	{
 		//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -410,67 +497,67 @@ int main(void)
 			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);  // Éteint la LED
 		}
 		printf("Test printf bien\r\n");
-		/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-		/* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 	}
-	/* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
- * @brief System Clock Configuration
- * @retval None
- */
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
-	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-	/** Configure LSE Drive Capability
-	 */
-	HAL_PWR_EnableBkUpAccess();
+  /** Configure LSE Drive Capability
+  */
+  HAL_PWR_EnableBkUpAccess();
 
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_RCC_PWR_CLK_ENABLE();
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-	/** Initializes the RCC Oscillators according to the specified parameters
-	 * in the RCC_OscInitTypeDef structure.
-	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLM = 25;
-	RCC_OscInitStruct.PLL.PLLN = 432;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-	RCC_OscInitStruct.PLL.PLLQ = 2;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 25;
+  RCC_OscInitStruct.PLL.PLLN = 432;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-	/** Activate the Over-Drive mode
-	 */
-	if (HAL_PWREx_EnableOverDrive() != HAL_OK)
-	{
-		Error_Handler();
-	}
+  /** Activate the Over-Drive mode
+  */
+  if (HAL_PWREx_EnableOverDrive() != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-	/** Initializes the CPU, AHB and APB buses clocks
-	 */
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
-	{
-		Error_Handler();
-	}
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE BEGIN 4 */
@@ -478,33 +565,33 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
 void Error_Handler(void)
 {
-	/* USER CODE BEGIN Error_Handler_Debug */
+  /* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
 	__disable_irq();
 	while (1)
 	{
 	}
-	/* USER CODE END Error_Handler_Debug */
+  /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
 /**
- * @brief  Reports the name of the source file and the source line number
- *         where the assert_param error has occurred.
- * @param  file: pointer to the source file name
- * @param  line: assert_param error line source number
- * @retval None
- */
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-	/* USER CODE BEGIN 6 */
+  /* USER CODE BEGIN 6 */
 	/* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-	/* USER CODE END 6 */
+  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
