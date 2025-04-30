@@ -362,7 +362,7 @@ int overflow_shell_func(h_shell_t * h_shell, int argc, char ** argv)
 
     return 0; // Jamais atteint
 }
-
+/*
 void configureTimerForRunTimeStats(void)
 {
     // Utiliser SysTick comme timer de stats
@@ -391,6 +391,21 @@ void consumerTask(void *pvParameters)
             printf("Sémaphore pris !\r\n");
         }
     }
+}
+*/
+int stats_shell_func(h_shell_t * h_shell, int argc, char ** argv)
+{
+    // Affichage des stats d'exécution (CPU time)
+    h_shell->drv.transmit("\r\n[Run Time Stats]\r\n", 21);
+    vTaskGetRunTimeStats(h_shell->print_buffer);
+    h_shell->drv.transmit(h_shell->print_buffer, strlen(h_shell->print_buffer));
+
+    // Affichage de l'état des tâches
+    h_shell->drv.transmit("\r\n[Task List]\r\n", 15);
+    vTaskList(h_shell->print_buffer);
+    h_shell->drv.transmit(h_shell->print_buffer, strlen(h_shell->print_buffer));
+
+    return 0;
 }
 /* USER CODE END PFP */
 
@@ -529,12 +544,17 @@ int main(void)
 	    printf("Erreur ajout commande shell o\r\n");
 	    Error_Handler();
 	}
-
+	/*
 	mySemaphore = xSemaphoreCreateBinary();
 	xTaskCreate(producerTask, "Producer", 128, NULL, 1, NULL);
 	xTaskCreate(consumerTask, "Consumer", 128, NULL, 1, NULL);
 
-	vQueueAddToRegistry(mySemaphore, "MySemaphore");
+	vQueueAddToRegistry(mySemaphore, "MySemaphore");*/
+
+	if (shell_add(&mon_shell, 'x', stats_shell_func, "Affiche les stats FreeRTOS") != 0) {
+	    printf("Erreur ajout commande shell x\r\n");
+	    Error_Handler();
+	}
 
 	vTaskStartScheduler();
   /* USER CODE END 2 */

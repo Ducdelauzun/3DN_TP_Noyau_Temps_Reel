@@ -9,10 +9,7 @@
 ../Core/Src/main.c:331:6:recursive_overflow	1
 ../Core/Src/main.c:338:6:dummyTask	2
 ../Core/Src/main.c:352:5:overflow_shell_func	2
-../Core/Src/main.c:366:6:configureTimerForRunTimeStats	1
-../Core/Src/main.c:372:15:getRunTimeCounterValue	1
-../Core/Src/main.c:377:6:producerTask	1
-../Core/Src/main.c:386:6:consumerTask	2
-../Core/Src/main.c:406:5:main	9
-../Core/Src/main.c:573:6:SystemClock_Config	4
-../Core/Src/main.c:633:6:Error_Handler	1
+../Core/Src/main.c:396:5:stats_shell_func	1
+../Core/Src/main.c:421:5:main	10
+../Core/Src/main.c:593:6:SystemClock_Config	4
+../Core/Src/main.c:653:6:Error_Handler	1
