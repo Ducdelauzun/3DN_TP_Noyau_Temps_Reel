@@ -70,6 +70,8 @@ volatile uint32_t led_period_ms = 0;
 volatile uint32_t spam_count = 0;
 char spam_msg[BUFFER_SIZE] = "spam";
 TaskHandle_t spamTaskHandle = NULL;
+
+SemaphoreHandle_t mySemaphore;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -311,7 +313,8 @@ void dummyTask(void *pvParameters)
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     char msg[100];
-    int size = snprintf(msg, sizeof(msg), "\r\n[ERROR] Stack overflow detecté dans la tâche : %s\r\n", pcTaskName);
+    int size = snprintf(msg, sizeof(msg),
+        "\r\n[ERROR] Stack overflow detecté dans la tâche : %s\r\n", pcTaskName);
     HAL_UART_Transmit(&huart1, (uint8_t *)msg, size, HAL_MAX_DELAY);
 
     HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
@@ -321,20 +324,73 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
     while (1)
     {
         HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-        HAL_Delay(1000);
+        for (volatile uint32_t i = 0; i < 1000000; i++);
     }
 }
 
 void recursive_overflow(void)
 {
-    char buffer[100];
+    char buffer[10000];
     (void)buffer;
     recursive_overflow();
 }
 
 void dummyTask(void *pvParameters)
 {
-    recursive_overflow();
+    volatile uint32_t dummy[1000];
+
+    // Forcer l'utilisation réelle de la pile
+    for (int i = 0; i < 1000; i++) {
+        ((volatile uint32_t*)dummy)[i] = i;
+    }
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+int overflow_shell_func(h_shell_t * h_shell, int argc, char ** argv)
+{
+    int len = snprintf(h_shell->print_buffer, BUFFER_SIZE,
+                       "Déclenchement du dépassement de pile...\r\n");
+    h_shell->drv.transmit(h_shell->print_buffer, len);
+
+    if (xTaskCreate(dummyTask, "OverflowTask", 64, NULL, 2, NULL) != pdPASS) {
+        int len = snprintf(h_shell->print_buffer, BUFFER_SIZE, "Erreur création OverflowTask\r\n");
+        h_shell->drv.transmit(h_shell->print_buffer, len);
+    }
+
+    return 0; // Jamais atteint
+}
+
+void configureTimerForRunTimeStats(void)
+{
+    // Utiliser SysTick comme timer de stats
+    // Pas très précis mais OK pour test
+}
+
+unsigned long getRunTimeCounterValue(void)
+{
+    return HAL_GetTick();  // Renvoie le nombre de ms écoulées
+}
+
+void producerTask(void *pvParameters)
+{
+    for (;;)
+    {
+        xSemaphoreGive(mySemaphore);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+void consumerTask(void *pvParameters)
+{
+    for (;;)
+    {
+        if (xSemaphoreTake(mySemaphore, portMAX_DELAY)) {
+            printf("Sémaphore pris !\r\n");
+        }
+    }
 }
 /* USER CODE END PFP */
 
@@ -469,10 +525,16 @@ int main(void)
 	    }
 	}*/
 
-	if (xTaskCreate(dummyTask, "Dummy", 64, NULL, 1, NULL) != pdPASS) {
-	    printf("Erreur création tâche Dummy\r\n");
+	if (shell_add(&mon_shell, 'o', overflow_shell_func, "Déclenche un overflow") != 0) {
+	    printf("Erreur ajout commande shell o\r\n");
 	    Error_Handler();
 	}
+
+	mySemaphore = xSemaphoreCreateBinary();
+	xTaskCreate(producerTask, "Producer", 128, NULL, 1, NULL);
+	xTaskCreate(consumerTask, "Consumer", 128, NULL, 1, NULL);
+
+	vQueueAddToRegistry(mySemaphore, "MySemaphore");
 
 	vTaskStartScheduler();
   /* USER CODE END 2 */
