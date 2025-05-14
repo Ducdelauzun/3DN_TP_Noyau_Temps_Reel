@@ -17,3 +17,12 @@ L'affichage devient plus fluide et sans "retard" apparent
 C’est le tas FreeRTOS, appelé : ucHeap
 2.
 C’est entièrement géré par FreeRTOS.
+3.
+Memoire FLASH : 29.27KB soit 2.86% ; Memoire RAM : 18.79KB soit 5.87%
+4.
+Les taches sont créées jusqu’à l’arrivée d'une erreur
+5.
+La taille du tas a été modifiée, en revanche nous ne sommes pas parvenus à afficher la nouvelle mémoire utilisée
+3.2 Gestion des piles
+4.
+On utilise une LED sur la carte qui s'allume lorsque la pile est remplie
